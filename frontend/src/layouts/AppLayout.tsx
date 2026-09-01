@@ -8,6 +8,8 @@ import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { KycGate } from '@/layouts/KycGate'
 import { useMoneyReceivedListener } from '@/hooks/useMoneyReceivedListener'
 
+import { ChatbotWidget } from '@/components/chat/ChatbotWidget'
+
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -31,6 +33,7 @@ export function AppLayout() {
         </main>
       </div>
       <BottomNav />
+      <ChatbotWidget />
     </div>
   )
 }
