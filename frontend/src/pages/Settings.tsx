@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { banksApi } from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
-import { useTheme } from '@/hooks/useTheme'
 import { useToast } from '@/hooks/useToast'
 import { supabase } from '@/lib/supabase'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -13,12 +12,11 @@ import { Input, Label } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/Badge'
-import { Moon, Sun, Landmark, Plus, Unlink } from 'lucide-react'
+import { Landmark, Plus, Unlink } from 'lucide-react'
 import type { Bank } from '@/lib/api'
 
 export default function Settings() {
   const { profile } = useAuth()
-  const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [firstName, setFirstName] = useState(profile?.first_name || '')
@@ -89,31 +87,6 @@ export default function Settings() {
             <Button loading={saveProfileMutation.isPending} onClick={() => saveProfileMutation.mutate()}>
               Save changes
             </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Appearance</CardTitle>
-            <CardDescription>Choose light or dark mode</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setTheme('light')}
-                className={`flex flex-1 flex-col items-center gap-2 rounded-xl border p-4 ${theme === 'light' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-border)]'}`}
-              >
-                <Sun size={20} />
-                <span className="text-sm font-medium">Light</span>
-              </button>
-              <button
-                onClick={() => setTheme('dark')}
-                className={`flex flex-1 flex-col items-center gap-2 rounded-xl border p-4 ${theme === 'dark' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-border)]'}`}
-              >
-                <Moon size={20} />
-                <span className="text-sm font-medium">Dark</span>
-              </button>
-            </div>
           </CardContent>
         </Card>
 

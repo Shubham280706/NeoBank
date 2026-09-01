@@ -1,6 +1,5 @@
-import { Menu, Moon, Sun, LogOut } from 'lucide-react'
+import { Menu, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Button } from '../ui/Button'
@@ -9,7 +8,6 @@ import { NotificationBell } from './NotificationBell'
 import { initials } from '@/lib/utils'
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { theme, toggleTheme } = useTheme()
   const { profile } = useAuth()
   const navigate = useNavigate()
 
@@ -28,9 +26,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex-1" />
       <LiveIndicator />
       <NotificationBell />
-      <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </Button>
       <div className="hidden items-center gap-2 sm:flex">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)]/15 text-xs font-semibold text-[var(--color-primary)]">
           {initials(fullName)}
