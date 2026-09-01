@@ -19,3 +19,16 @@ export async function getTransactionById(req: AuthedRequest, res: Response, next
     next(err);
   }
 }
+
+export async function updateCategory(req: AuthedRequest, res: Response, next: NextFunction) {
+  try {
+    const { category } = req.body;
+    if (!category) {
+      res.status(400).json({ message: "Category is required" });
+      return;
+    }
+    res.json(await transactionService.updateTransactionCategory(req.userId!, String(req.params.id), String(category)));
+  } catch (err) {
+    next(err);
+  }
+}

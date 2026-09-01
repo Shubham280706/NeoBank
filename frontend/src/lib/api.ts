@@ -257,6 +257,7 @@ export interface TransactionFilters extends Query {
 export const transactionsApi = {
   list: (filters: TransactionFilters = {}) => get<PaginatedResponse<Transaction>>('/api/transactions', filters),
   get: (id: string) => get<Transaction>(`/api/transactions/${id}`),
+  updateCategory: (id: string, category: string) => patch<Transaction>(`/api/transactions/${id}/category`, { category }),
 }
 
 // ---------- beneficiaries ----------
@@ -277,6 +278,7 @@ export interface CreateTransferInput {
   idempotencyKey: string
   merchant?: string
   recipientUpiId?: string
+  category?: string
 }
 export const transfersApi = {
   create: (body: CreateTransferInput) => post<Transfer>('/api/transfers', body),

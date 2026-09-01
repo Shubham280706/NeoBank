@@ -6,3 +6,5 @@ export const transactionsRouter = Router();
 transactionsRouter.use(requireAuth);
 transactionsRouter.get("/", transactionController.getTransactions);
 transactionsRouter.get("/:id", transactionController.getTransactionById);
+transactionsRouter.patch("/:id/category", transactionController.updateCategory);
+transactionsRouter.patch("/:id", transactionController.updateCategory);

@@ -9,4 +9,5 @@ export const createTransferSchema = z.object({
   idempotencyKey: z.string().min(8).max(128),
   merchant: z.string().max(120).optional(),
   recipientUpiId: z.string().max(120).optional(),
+  category: z.string().max(80).optional(),
 });

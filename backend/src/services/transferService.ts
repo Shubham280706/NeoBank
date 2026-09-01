@@ -47,6 +47,14 @@ export async function createTransfer(userId: string, input: CreateTransferInput)
     throw new HttpError(500, error.message);
   }
 
+  if (input.category) {
+    await db
+      .from("transactions")
+      .update({ category: input.category })
+      .eq("user_id", userId)
+      .eq("reference_number", referenceNumber);
+  }
+
   return data?.[0];
 }
 

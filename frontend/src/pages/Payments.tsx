@@ -25,6 +25,7 @@ const transferSchema = z.object({
   newBeneficiaryUpi: z.string().optional(),
   amount: z.coerce.number().positive('Enter a valid amount'),
   transferType: z.enum(['UPI', 'IMPS', 'NEFT', 'RTGS']),
+  category: z.string().optional(),
   remarks: z.string().optional(),
 })
 type TransferFormValues = z.infer<typeof transferSchema>
@@ -49,7 +50,7 @@ export default function Payments() {
     formState: { errors },
   } = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
-    defaultValues: { transferType: 'UPI' },
+    defaultValues: { transferType: 'UPI', category: 'Entertainment' },
   })
 
   const transferMutation = useMutation({
@@ -61,6 +62,7 @@ export default function Payments() {
         recipientUpiId: beneficiaryMode === 'new' ? values.newBeneficiaryUpi : undefined,
         amount: values.amount,
         transferType: values.transferType,
+        category: values.category || 'Entertainment',
         remarks: values.remarks,
         idempotencyKey: crypto.randomUUID(),
       }),
@@ -155,11 +157,24 @@ export default function Payments() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <Label htmlFor="amount">Amount (INR)</Label>
                       <Input id="amount" type="number" step="0.01" placeholder="0.00" {...register('amount')} />
                       <FieldError>{errors.amount?.message}</FieldError>
+                    </div>
+                    <div>
+                      <Label htmlFor="category">Category (for Budgets)</Label>
+                      <Select id="category" {...register('category')}>
+                        <option value="Entertainment">🎬 Entertainment</option>
+                        <option value="Subscriptions">📱 Subscriptions</option>
+                        <option value="Dining">🍔 Dining & Food</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Travel">🚗 Travel & Fuel</option>
+                        <option value="Utilities">⚡ Bills & Utilities</option>
+                        <option value="Groceries">🛒 Groceries</option>
+                        <option value="Transfer">💸 General Transfer</option>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="transferType">Transfer type</Label>
@@ -174,7 +189,7 @@ export default function Payments() {
 
                   <div>
                     <Label htmlFor="remarks">Remarks (optional)</Label>
-                    <Textarea id="remarks" placeholder="What's this for?" {...register('remarks')} />
+                    <Textarea id="remarks" placeholder="What's this for? (e.g. Movie tickets, Spotify subscription)" {...register('remarks')} />
                   </div>
 
                   <Button type="submit" className="w-full" loading={transferMutation.isPending}>

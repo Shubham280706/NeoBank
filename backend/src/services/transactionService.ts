@@ -33,3 +33,17 @@ export async function getTransaction(userId: string, id: string) {
   if (error) throw new HttpError(404, "Transaction not found");
   return data;
 }
+
+export async function updateTransactionCategory(userId: string, id: string, category: string) {
+  const db = requireSupabase();
+  const { data, error } = await db
+    .from("transactions")
+    .update({ category })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new HttpError(500, error.message);
+  return data;
+}
