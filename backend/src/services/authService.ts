@@ -1,11 +1,11 @@
 import { requireSupabase } from "../config/supabase.js";
 import { HttpError } from "../middleware/errorHandler.js";
+import { ensureProfile } from "./profileService.js";
 
 export async function getMe(userId: string) {
   const db = requireSupabase();
 
-  const { data: profile, error: profileError } = await db.from("profiles").select("*").eq("id", userId).single();
-  if (profileError || !profile) throw new HttpError(404, "Profile not found");
+  const profile = await ensureProfile(userId);
 
   const { data: accounts, error: accountsError } = await db
     .from("bank_accounts")

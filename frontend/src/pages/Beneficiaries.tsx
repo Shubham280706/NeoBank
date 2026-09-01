@@ -17,9 +17,9 @@ import { Users, Plus, Pencil, Trash2 } from 'lucide-react'
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   nickname: z.string().optional(),
-  account_number: z.string().optional(),
-  ifsc: z.string().optional(),
-  upi_id: z.string().optional(),
+  accountNumber: z.string().min(4, 'Enter a valid account number').max(34),
+  ifsc: z.string().min(4, 'Enter a valid IFSC code').max(20),
+  bankName: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -63,7 +63,7 @@ export default function Beneficiaries() {
 
   const openCreate = () => {
     setEditing(null)
-    reset({ name: '', nickname: '', account_number: '', ifsc: '', upi_id: '' })
+    reset({ name: '', nickname: '', accountNumber: '', ifsc: '', bankName: '' })
     setDialogOpen(true)
   }
   const openEdit = (b: Beneficiary) => {
@@ -71,9 +71,9 @@ export default function Beneficiaries() {
     reset({
       name: b.name,
       nickname: b.nickname || '',
-      account_number: b.account_number || '',
+      accountNumber: b.account_number || '',
       ifsc: b.ifsc || '',
-      upi_id: b.upi_id || '',
+      bankName: b.bank_name || '',
     })
     setDialogOpen(true)
   }
@@ -120,7 +120,7 @@ export default function Beneficiaries() {
                 <div className="mt-3 space-y-1 text-xs text-[var(--color-text-muted)]">
                   {b.account_number && <p>A/C: {b.account_number}</p>}
                   {b.ifsc && <p>IFSC: {b.ifsc}</p>}
-                  {b.upi_id && <p>UPI: {b.upi_id}</p>}
+                  {b.bank_name && <p>{b.bank_name}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -144,18 +144,23 @@ export default function Beneficiaries() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="account_number">Account number</Label>
-              <Input id="account_number" {...register('account_number')} />
+              <Label htmlFor="accountNumber">Account number</Label>
+              <Input id="accountNumber" {...register('accountNumber')} />
+              <FieldError>{errors.accountNumber?.message}</FieldError>
             </div>
             <div>
               <Label htmlFor="ifsc">IFSC</Label>
-              <Input id="ifsc" {...register('ifsc')} />
+              <Input id="ifsc" placeholder="SBIN0001234" {...register('ifsc')} />
+              <FieldError>{errors.ifsc?.message}</FieldError>
             </div>
           </div>
           <div>
-            <Label htmlFor="upi_id">UPI ID</Label>
-            <Input id="upi_id" placeholder="name@upi" {...register('upi_id')} />
+            <Label htmlFor="bankName">Bank name (optional)</Label>
+            <Input id="bankName" placeholder="State Bank of India" {...register('bankName')} />
           </div>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            To send to a NeoBank user by UPI ID instead, use "New UPI ID" on the Payments page — no beneficiary needed.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel

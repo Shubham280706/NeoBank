@@ -66,17 +66,30 @@ export default function Dashboard() {
     <div>
       <PageHeader title="Home" description="Your financial snapshot at a glance" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         {loadingSummary
           ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)
           : summaryCards.map((c) => (
-              <Card key={c.label}>
-                <CardContent className="p-4">
+              <Card key={c.label} className="min-w-0">
+                <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-text-muted)]">{c.label}</span>
-                    <c.icon size={16} className="text-[var(--color-text-muted)]" />
+                    <span className="truncate text-xs font-medium text-[var(--color-text-muted)]">{c.label}</span>
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
+                        c.tone === 'primary' && 'bg-[var(--color-primary)]/12 text-[var(--color-primary)]',
+                        c.tone === 'accent' && 'bg-[var(--color-accent)]/12 text-[var(--color-accent)]',
+                        c.tone === 'positive' && 'bg-[var(--color-positive)]/12 text-[var(--color-positive)]',
+                        c.tone === 'negative' && 'bg-[var(--color-negative)]/12 text-[var(--color-negative)]',
+                        c.tone === 'warning' && 'bg-[var(--color-warning)]/12 text-[var(--color-warning)]',
+                      )}
+                    >
+                      <c.icon size={16} />
+                    </span>
                   </div>
-                  <p className="mt-2 text-xl font-semibold text-[var(--color-text)]">{formatCurrency(c.value)}</p>
+                  <p className="mt-3 truncate text-xl font-bold tracking-tight text-[var(--color-text)] sm:text-2xl">
+                    {formatCurrency(c.value)}
+                  </p>
                 </CardContent>
               </Card>
             ))}

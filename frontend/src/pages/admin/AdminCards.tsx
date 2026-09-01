@@ -35,13 +35,13 @@ export default function AdminCards() {
                 {cards.map((c) => (
                   <tr key={c.id}>
                     <td className="px-4 py-3 font-mono text-xs text-[var(--color-text)]">
-                      {c.masked_number || `•••• ${c.last4 || '0000'}`}
+                      {`•••• ${c.last4 || '0000'}`}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={statusToBadgeVariant(c.status)}>{c.status || 'active'}</Badge>
+                      <Badge variant={statusToBadgeVariant(c.status)}>{c.status || 'ACTIVE'}</Badge>
                     </td>
                     <td className="px-4 py-3 text-right text-[var(--color-text-muted)]">
-                      {c.limit != null ? formatCurrency(c.limit) : '—'}
+                      {c.spending_limit != null ? formatCurrency(c.spending_limit) : '—'}
                     </td>
                   </tr>
                 ))}

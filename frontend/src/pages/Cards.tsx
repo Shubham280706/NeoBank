@@ -21,6 +21,8 @@ export default function Cards() {
   const [limitDialogCard, setLimitDialogCard] = useState<CardType | null>(null)
   const [limitValue, setLimitValue] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [newSpendingLimit, setNewSpendingLimit] = useState('100000')
+  const [newDailyLimit, setNewDailyLimit] = useState('25000')
   const [txCard, setTxCard] = useState<CardType | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['cards'], queryFn: cardsApi.list })
@@ -72,7 +74,11 @@ export default function Cards() {
     onError: (err) => toast({ title: 'Could not update limit', description: (err as Error).message, variant: 'error' }),
   })
   const createMutation = useMutation({
-    mutationFn: () => cardsApi.create({ type: 'debit' }),
+    mutationFn: () =>
+      cardsApi.create({
+        spendingLimit: Number(newSpendingLimit) || undefined,
+        dailyLimit: Number(newDailyLimit) || undefined,
+      }),
     onSuccess: () => {
       invalidate()
       toast({ title: 'Card created', variant: 'success' })
@@ -192,9 +198,31 @@ export default function Cards() {
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} title="Create a new card">
         <p className="mb-4 text-sm text-[var(--color-text-muted)]">
-          A new simulated debit card will be issued to your primary account.
+          A new simulated virtual card will be issued to your account. Set its limits below.
         </p>
-        <div className="flex justify-end gap-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="newSpendingLimit">Spending limit (₹)</Label>
+            <Input
+              id="newSpendingLimit"
+              type="number"
+              min={0}
+              value={newSpendingLimit}
+              onChange={(e) => setNewSpendingLimit(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="newDailyLimit">Daily limit (₹)</Label>
+            <Input
+              id="newDailyLimit"
+              type="number"
+              min={0}
+              value={newDailyLimit}
+              onChange={(e) => setNewDailyLimit(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" onClick={() => setCreateOpen(false)}>
             Cancel
           </Button>

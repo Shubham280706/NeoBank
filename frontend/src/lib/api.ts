@@ -95,7 +95,8 @@ export interface BankAccount {
   id: string
   account_number: string
   ifsc?: string
-  type?: string
+  account_type?: string
+  status?: string
   balance: number
   available_balance?: number
   currency?: string
@@ -120,9 +121,22 @@ export interface Beneficiary {
   name: string
   account_number?: string
   ifsc?: string
-  upi_id?: string
+  bank_name?: string
   nickname?: string
+  favorite?: boolean
   [key: string]: unknown
+}
+
+// The create/update payload uses camelCase to match the backend's Zod
+// schema exactly — the GET response above stays snake_case because it's a
+// raw passthrough of the Supabase row (DB column names).
+export interface BeneficiaryInput {
+  name: string
+  accountNumber: string
+  ifsc: string
+  bankName?: string
+  nickname?: string
+  favorite?: boolean
 }
 
 export interface Transfer {
@@ -213,7 +227,10 @@ export interface PaginatedResponse<T> {
 
 // ---------- auth ----------
 export const authApi = {
-  me: () => get<{ profile: Profile; bank_accounts: BankAccount[] }>('/api/auth/me'),
+  // /api/auth/me returns profile fields spread at the top level alongside
+  // bank_accounts, not nested under a `profile` key — see backend
+  // authService.ts's `{ ...profile, bank_accounts }`.
+  me: () => get<Profile & { bank_accounts: BankAccount[] }>('/api/auth/me'),
 }
 
 // ---------- accounts ----------
@@ -221,6 +238,9 @@ export const accountsApi = {
   list: () => get<BankAccount[]>('/api/accounts'),
   get: (id: string) => get<BankAccount>(`/api/accounts/${id}`),
   balance: (id: string) => get<{ balance: number; available_balance?: number }>(`/api/accounts/${id}/balance`),
+  create: (accountType: 'SAVINGS' | 'CURRENT') => post<BankAccount>('/api/accounts', { accountType }),
+  deposit: (id: string, amount: number, remarks?: string) =>
+    post<{ transaction_id: string; new_balance: number }>(`/api/accounts/${id}/deposit`, { amount, remarks }),
 }
 
 // ---------- transactions ----------
@@ -242,8 +262,8 @@ export const transactionsApi = {
 // ---------- beneficiaries ----------
 export const beneficiariesApi = {
   list: () => get<Beneficiary[]>('/api/beneficiaries'),
-  create: (body: Partial<Beneficiary>) => post<Beneficiary>('/api/beneficiaries', body),
-  update: (id: string, body: Partial<Beneficiary>) => put<Beneficiary>(`/api/beneficiaries/${id}`, body),
+  create: (body: BeneficiaryInput) => post<Beneficiary>('/api/beneficiaries', body),
+  update: (id: string, body: Partial<BeneficiaryInput>) => put<Beneficiary>(`/api/beneficiaries/${id}`, body),
   remove: (id: string) => del<void>(`/api/beneficiaries/${id}`),
 }
 
@@ -267,7 +287,7 @@ export const transfersApi = {
 // ---------- cards ----------
 export const cardsApi = {
   list: () => get<Card[]>('/api/cards'),
-  create: (body: Partial<Card>) => post<Card>('/api/cards', body),
+  create: (body: { spendingLimit?: number; dailyLimit?: number }) => post<Card>('/api/cards', body),
   freeze: (id: string) => post<Card>(`/api/cards/${id}/freeze`),
   unfreeze: (id: string) => post<Card>(`/api/cards/${id}/unfreeze`),
   setLimit: (id: string, spendingLimit: number) => put<Card>(`/api/cards/${id}/limit`, { spendingLimit }),
@@ -328,7 +348,7 @@ export const savingsApi = {
 
 // ---------- notifications ----------
 export const notificationsApi = {
-  list: () => get<NotificationItem[]>('/api/notifications'),
+  list: () => get<{ data: NotificationItem[]; page: number; limit: number; total: number }>('/api/notifications'),
   markRead: (id: string) => patch<NotificationItem>(`/api/notifications/${id}/read`),
   markAllRead: () => patch<void>('/api/notifications/read-all'),
 }

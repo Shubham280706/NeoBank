@@ -2,6 +2,7 @@ import { randomInt } from "crypto";
 import { requireSupabase } from "../config/supabase.js";
 import { HttpError } from "../middleware/errorHandler.js";
 import { writeAuditLog } from "./auditService.js";
+import { ensureProfile } from "./profileService.js";
 import type { z } from "zod";
 import type { createCardSchema, updateCardLimitSchema } from "../validators/cardValidator.js";
 
@@ -31,13 +32,7 @@ export async function listCards(userId: string) {
 export async function createCard(userId: string, input: CreateInput) {
   const db = requireSupabase();
 
-  const { data: profile, error: profileError } = await db
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", userId)
-    .single();
-  if (profileError || !profile) throw new HttpError(404, "Profile not found");
-
+  const profile = await ensureProfile(userId);
   const cardholderName = `${profile.first_name} ${profile.last_name}`.trim() || "Card Holder";
   const now = new Date();
   const expiryYear = now.getFullYear() + 4;

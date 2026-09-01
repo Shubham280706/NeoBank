@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { requireSupabase } from "../config/supabase.js";
 import { HttpError } from "../middleware/errorHandler.js";
 import { getKYCProvider } from "../providers/kyc/index.js";
@@ -12,11 +13,22 @@ function randomDelayMs(): number {
   return 3000 + Math.floor(Math.random() * 3000);
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Fires the async resolution flow without blocking the HTTP response.
-// Never awaited by the caller — errors are caught and logged locally.
+// A bare setTimeout only works because a traditional Node server (local dev,
+// Docker) stays alive between requests — on Vercel, the serverless function
+// instance is frozen right after the response is sent, so an un-awaited
+// setTimeout callback would silently never run. `waitUntil` is Vercel's
+// supported way to keep the function alive for this kind of background work
+// after responding; it's a no-op wrapper (just awaits inline) anywhere else.
 function scheduleResolution(userId: string, kycId: string, documentNumberHash: string) {
-  setTimeout(async () => {
-    try {
+  waitUntil(
+    (async () => {
+      await delay(randomDelayMs());
+      try {
       const db = requireSupabase();
       await db.from("kyc_verifications").update({ status: "PROCESSING" }).eq("id", kycId);
 
@@ -42,10 +54,11 @@ function scheduleResolution(userId: string, kycId: string, documentNumberHash: s
         );
         await writeAuditLog(userId, "KYC_FAILED", "kyc_verification", kycId);
       }
-    } catch (err) {
-      console.error("KYC resolution failed", err);
-    }
-  }, randomDelayMs());
+      } catch (err) {
+        console.error("KYC resolution failed", err);
+      }
+    })()
+  );
 }
 
 export async function submitKyc(userId: string, input: SubmitInput) {
