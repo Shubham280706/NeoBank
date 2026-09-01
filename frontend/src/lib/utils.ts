@@ -5,15 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = 'INR') {
+export function formatCurrency(amount?: number | null, currency = 'INR') {
+  const numericAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0
   try {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency,
       maximumFractionDigits: 2,
-    }).format(amount)
+    }).format(numericAmount)
   } catch {
-    return `₹${amount.toFixed(2)}`
+    return `${currency} ${numericAmount.toFixed(2)}`
   }
 }
 

@@ -321,7 +321,7 @@ export const banksApi = {
 export const fxApi = {
   rates: (base = 'INR') => get<{ base: string; rates: Record<string, number> }>('/api/fx/rates', { base }),
   convert: (from: string, to: string, amount: number) =>
-    get<{ from: string; to: string; amount: number; result: number; rate?: number }>('/api/fx/convert', {
+    get<{ from: string; to: string; amount: number; convertedAmount?: number; result?: number; rate?: number }>('/api/fx/convert', {
       from,
       to,
       amount,

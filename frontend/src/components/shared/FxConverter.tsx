@@ -67,7 +67,7 @@ export function FxConverter() {
         {convertMutation.data && (
           <div className="rounded-lg bg-[var(--color-surface-2)] p-3 text-center">
             <p className="text-lg font-semibold text-[var(--color-text)]">
-              {formatCurrency(convertMutation.data.result, to)}
+              {formatCurrency(convertMutation.data.convertedAmount ?? convertMutation.data.result ?? 0, to)}
             </p>
             {convertMutation.data.rate && (
               <p className="text-xs text-[var(--color-text-muted)]">
