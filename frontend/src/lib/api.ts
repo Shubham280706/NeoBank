@@ -257,7 +257,21 @@ export interface TransactionFilters extends Query {
 export const transactionsApi = {
   list: (filters: TransactionFilters = {}) => get<PaginatedResponse<Transaction>>('/api/transactions', filters),
   get: (id: string) => get<Transaction>(`/api/transactions/${id}`),
-  updateCategory: (id: string, category: string) => patch<Transaction>(`/api/transactions/${id}/category`, { category }),
+  updateCategory: async (id: string, category: string) => {
+    try {
+      return await patch<Transaction>(`/api/transactions/${id}/category`, { category })
+    } catch {
+      const { data, error } = await supabase
+        .from('transactions')
+        .update({ category })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw new ApiError(error.message, 500)
+      return data as Transaction
+    }
+  },
 }
 
 // ---------- beneficiaries ----------
