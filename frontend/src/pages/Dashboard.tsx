@@ -13,6 +13,8 @@ import {
   Building2,
   Eye,
   EyeOff,
+  CreditCard,
+  BarChart3,
 } from 'lucide-react'
 import {
   accountsApi,
@@ -262,6 +264,60 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Mobile Quick Action Icon Bar (Matching Reference Banking UI) */}
+      <div className="mt-5 grid grid-cols-5 gap-2 sm:gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setOpenDepositModal(true)}
+          className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all hover:bg-[var(--color-primary)]/10 active:scale-95 group"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
+            <Plus size={20} />
+          </div>
+          <span className="text-[11px] font-semibold text-[var(--color-text)]">Deposit</span>
+        </button>
+
+        <Link
+          to="/payments"
+          className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all hover:bg-emerald-500/10 active:scale-95 group"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+            <Send size={20} />
+          </div>
+          <span className="text-[11px] font-semibold text-[var(--color-text)]">Transfer</span>
+        </Link>
+
+        <Link
+          to="/accounts"
+          className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all hover:bg-indigo-500/10 active:scale-95 group"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+            <Wallet size={20} />
+          </div>
+          <span className="text-[11px] font-semibold text-[var(--color-text)]">Accounts</span>
+        </Link>
+
+        <Link
+          to="/cards"
+          className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all hover:bg-purple-500/10 active:scale-95 group"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+            <CreditCard size={20} />
+          </div>
+          <span className="text-[11px] font-semibold text-[var(--color-text)]">Cards</span>
+        </Link>
+
+        <Link
+          to="/analytics"
+          className="flex flex-col items-center gap-1.5 rounded-xl p-1.5 transition-all hover:bg-amber-500/10 active:scale-95 group"
+        >
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+            <BarChart3 size={20} />
+          </div>
+          <span className="text-[11px] font-semibold text-[var(--color-text)]">Analytics</span>
+        </Link>
+      </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
