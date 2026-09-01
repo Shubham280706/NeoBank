@@ -3,12 +3,11 @@ export interface GroqMessage {
   content: string
 }
 
-const DEFAULT_MODELS = [
+// Active supported Groq models (deprecated models removed)
+const ACTIVE_MODELS = [
   'llama-3.1-8b-instant',
   'llama-3.3-70b-versatile',
-  'llama3-8b-8192',
-  'llama3-70b-8192',
-  'mixtral-8x7b-32768',
+  'gemma2-9b-it',
 ]
 
 export async function askGroq(
@@ -17,13 +16,13 @@ export async function askGroq(
 ): Promise<string> {
   const key = apiKey || (import.meta.env.VITE_GROQ_API_KEY as string | undefined)
 
-  if (!key) {
-    throw new Error('Groq API Key is missing. Please provide your Groq API Key.')
+  if (!key || !key.trim()) {
+    throw new Error('Groq API Key is missing. Please click the 🔑 key icon at the top right to enter your Groq API Key.')
   }
 
   let lastErrorMsg = ''
 
-  for (const model of DEFAULT_MODELS) {
+  for (const model of ACTIVE_MODELS) {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -43,12 +42,19 @@ export async function askGroq(
         const data = await res.json()
         const reply = data.choices?.[0]?.message?.content
         if (reply) return reply
-      } else {
-        const errorData = await res.json().catch(() => ({}))
-        lastErrorMsg = errorData?.error?.message || res.statusText || 'Groq API request failed.'
-        if (res.status === 401) {
-          throw new Error(`Invalid Groq API Key: ${lastErrorMsg}`)
-        }
+      }
+
+      const errorData = await res.json().catch(() => ({}))
+      const msg = errorData?.error?.message || res.statusText || 'Groq API request failed.'
+      lastErrorMsg = msg
+
+      if (res.status === 401 || msg.toLowerCase().includes('api key') || msg.toLowerCase().includes('unauthorized')) {
+        throw new Error(`Invalid Groq API Key. Please click the 🔑 key icon to update your key.\nDetails: ${msg}`)
+      }
+
+      // If it's a model deprecation/not-found error, try the next active model in the loop
+      if (msg.includes('decommissioned') || msg.includes('does not exist')) {
+        continue
       }
     } catch (err: any) {
       if (err.message.includes('Invalid Groq API Key')) throw err
