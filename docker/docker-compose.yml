@@ -1,0 +1,29 @@
+# NeoBank demo stack — backend API + frontend static site.
+#
+# NOTE: there is deliberately NO postgres/database service here. Supabase is
+# the hosted Postgres + Auth + Realtime backend for this project — it is not
+# self-hosted as part of this compose file. Point SUPABASE_URL /
+# SUPABASE_SERVICE_ROLE_KEY (in ../.env) at your Supabase project.
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

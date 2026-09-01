@@ -1,0 +1,46 @@
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import { env } from "./config/env.js";
+import { router as apiRouter } from "./routes/index.js";
+import { webhookRouter } from "./routes/webhooks.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+
+const app = express();
+
+app.use(helmet());
+// In demo mode, dev frontends often land on whatever port Vite finds free
+// (5173, 5174, 5175, ...), so reflect any localhost origin rather than
+// hardcoding a single port from FRONTEND_URL.
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin === env.frontendUrl) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+app.use(morgan("dev"));
+app.use(rateLimit({ windowMs: 60_000, max: 300 }));
+
+// Stripe webhook needs the raw body for signature verification, so it's
+// mounted before the JSON body parser.
+app.use("/api/webhooks", webhookRouter);
+
+app.use(express.json());
+
+app.get("/health", (_req, res) => res.json({ ok: true, demoMode: env.demoMode }));
+
+app.use("/api", apiRouter);
+
+app.use(errorHandler);
+
+app.listen(env.port, () => {
+  console.log(`[neo-bank-api] listening on :${env.port} (demoMode=${env.demoMode})`);
+});

@@ -1,0 +1,25 @@
+{
+  "name": "neo-bank-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulated Indian neo-banking demo monorepo (backend + frontend + Supabase). Educational only — no real money movement.",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "seed": "tsx supabase/seed/seed.ts",
+    "test": "npm run test -w backend",
+    "build": "npm run build -w backend && npm run build -w frontend"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.23.13"
+  },
+  "license": "ISC"
+}
