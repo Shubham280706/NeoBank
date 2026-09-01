@@ -453,11 +453,77 @@ export const notificationsApi = {
 }
 
 // ---------- analytics ----------
+const ALL_CATEGORIES = [
+  'Entertainment',
+  'Subscriptions',
+  'Dining & Food',
+  'Shopping',
+  'Travel',
+  'Bills & Utilities',
+  'Groceries',
+  'Transfer',
+]
+
 export const analyticsApi = {
-  overview: () => get<Record<string, unknown>>('/api/analytics/overview'),
-  spending: () => get<Record<string, unknown>>('/api/analytics/spending'),
-  categories: () => get<Array<{ category: string; amount: number; [key: string]: unknown }>>('/api/analytics/categories'),
-  monthly: () => get<Array<{ month: string; income?: number; spending?: number; [key: string]: unknown }>>('/api/analytics/monthly'),
+  overview: async () => {
+    try {
+      return await get<Record<string, unknown>>('/api/analytics/overview')
+    } catch {
+      const { data: txs } = await supabase.from('transactions').select('amount, type')
+
+      let totalIncome = 0
+      let totalSpending = 0
+
+      ;(txs || []).forEach((t: any) => {
+        const amt = Number(t.amount || 0)
+        if (t.type === 'CREDIT') totalIncome += amt
+        if (t.type === 'DEBIT') totalSpending += amt
+      })
+
+      return { totalIncome, totalSpending, netSavings: totalIncome - totalSpending }
+    }
+  },
+  spending: async () => {
+    try {
+      return await get<Record<string, unknown>>('/api/analytics/spending')
+    } catch {
+      return { totalSpending: 0 }
+    }
+  },
+  categories: async () => {
+    try {
+      const res = await get<Array<{ category: string; amount: number }>>('/api/analytics/categories')
+      if (res && res.length > 0) return res
+      throw new Error('Fallback to Supabase')
+    } catch {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('category, amount, type')
+        .eq('type', 'DEBIT')
+
+      const map: Record<string, number> = {}
+      ALL_CATEGORIES.forEach((cat) => {
+        map[cat] = 0
+      })
+
+      ;(txs || []).forEach((t: any) => {
+        const cat = (t.category || 'Transfer').trim()
+        map[cat] = (map[cat] || 0) + Number(t.amount || 0)
+      })
+
+      return Object.entries(map).map(([category, amount]) => ({
+        category,
+        amount,
+      }))
+    }
+  },
+  monthly: async () => {
+    try {
+      return await get<Array<{ month: string; income?: number; spending?: number }>>('/api/analytics/monthly')
+    } catch {
+      return []
+    }
+  },
 }
 
 // ---------- admin ----------

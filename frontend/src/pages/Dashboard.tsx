@@ -378,8 +378,11 @@ export default function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Spending by Category</CardTitle>
+              <Link to="/analytics" className="text-sm font-medium text-[var(--color-primary)] hover:underline">
+                View Analytics
+              </Link>
             </CardHeader>
             <CardContent>
               {categoriesQuery.isLoading ? (
@@ -387,17 +390,50 @@ export default function Dashboard() {
               ) : categories.length === 0 ? (
                 <EmptyState title="No spending data" description="Spend using your account to see a breakdown." />
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={categories} dataKey="amount" nameKey="category" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                      {categories.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                <div className="space-y-4">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={categories.filter((c) => c.amount > 0).length > 0 ? categories.filter((c) => c.amount > 0) : categories}
+                        dataKey="amount"
+                        nameKey="category"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={3}
+                      >
+                        {categories.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Category Breakdown Chips / Grid */}
+                  <div className="pt-2 border-t border-[var(--color-border)]">
+                    <p className="text-xs font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wider">Category Overview</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {categories.map((c, idx) => (
+                        <div
+                          key={c.category}
+                          className="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2.5 transition-all hover:border-[var(--color-primary)]/40"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                            />
+                            <span className="text-xs font-medium text-[var(--color-text)] truncate">{c.category}</span>
+                          </div>
+                          <span className="text-xs font-bold text-[var(--color-text)] mt-1">
+                            {formatCurrency(c.amount || 0)}
+                          </span>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
