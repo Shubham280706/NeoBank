@@ -70,12 +70,17 @@ export function useMoneyReceivedListener() {
           }
 
           if (newNotif?.title || newNotif?.message) {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] })
+            // Avoid duplicate toast if the credit transaction event already fired
+            const titleLower = (newNotif.title || '').toLowerCase()
+            if (titleLower.includes('money received') || titleLower.includes('received')) {
+              return
+            }
             toast({
               title: newNotif.title || 'New Notification',
               description: newNotif.message || '',
               variant: newNotif.type === 'TRANSFER' || newNotif.type === 'TRANSACTION' ? 'success' : 'info',
             })
-            queryClient.invalidateQueries({ queryKey: ['notifications'] })
           }
         },
       )

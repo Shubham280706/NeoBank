@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2 transition-all">
         {toasts.map((t) => {
           const Icon = ICONS[t.variant]
           return (
@@ -66,18 +66,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={t.id}
               role="status"
               className={cn(
-                'flex items-start gap-3 rounded-lg bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]',
+                'flex items-start gap-3 rounded-xl bg-[var(--color-surface)] p-3.5 shadow-2xl border border-[var(--color-border)] backdrop-blur-xl transition-all transform animate-in fade-in slide-in-from-top-4 duration-300',
                 VARIANT_CLASSES[t.variant],
               )}
             >
-              <Icon size={18} className={cn('mt-0.5 shrink-0', ICON_CLASSES[t.variant])} />
+              <Icon size={20} className={cn('mt-0.5 shrink-0', ICON_CLASSES[t.variant])} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[var(--color-text)]">{t.title}</p>
-                {t.description && <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{t.description}</p>}
+                <p className="text-sm font-semibold text-[var(--color-text)]">{t.title}</p>
+                {t.description && <p className="mt-0.5 text-xs font-medium text-[var(--color-text-muted)]">{t.description}</p>}
               </div>
               <button
                 onClick={() => remove(t.id)}
-                className="shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                className="shrink-0 rounded-lg p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)] transition-colors"
                 aria-label="Dismiss"
               >
                 <X size={14} />
