@@ -1,6 +1,21 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  Send,
+  CreditCard,
+  ShieldCheck,
+  Building2,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import {
   accountsApi,
   analyticsApi,
@@ -8,20 +23,39 @@ import {
   budgetsApi,
   savingsApi,
   cardsApi,
+  type BankAccount,
 } from '@/lib/api'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { Input, Label } from '@/components/ui/Input'
+import { useToast } from '@/hooks/useToast'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { VirtualCard } from '@/components/shared/VirtualCard'
-import { formatCurrency, formatDate, cn } from '@/lib/utils'
+import { formatCurrency, formatDate, maskAccountNumber, cn } from '@/lib/utils'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 
 const CHART_COLORS = ['#4f46e5', '#1e3a8a', '#16a34a', '#d97706', '#dc2626', '#0ea5e9', '#9333ea']
 
 export default function Dashboard() {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [openDepositModal, setOpenDepositModal] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('')
+  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('hide_balance') !== 'true')
+
+  const toggleShowBalance = () => {
+    setShowBalance((prev) => {
+      const next = !prev
+      localStorage.setItem('hide_balance', String(!next))
+      return next
+    })
+  }
+
   const accountsQuery = useQuery({ queryKey: ['accounts'], queryFn: accountsApi.list })
   const overviewQuery = useQuery({ queryKey: ['analytics', 'overview'], queryFn: analyticsApi.overview })
   const categoriesQuery = useQuery({ queryKey: ['analytics', 'categories'], queryFn: analyticsApi.categories })
@@ -40,6 +74,7 @@ export default function Dashboard() {
   useRealtimeSync('cards', [['cards']])
 
   const accounts = accountsQuery.data || []
+  const primaryAccount = accounts[0]
   const totalBalance = accounts.reduce((sum, a) => sum + (a.balance || 0), 0)
   const totalAvailable = accounts.reduce((sum, a) => sum + (a.available_balance ?? a.balance ?? 0), 0)
   const overview = (overviewQuery.data || {}) as Record<string, number | undefined>
@@ -52,13 +87,18 @@ export default function Dashboard() {
   const categories = categoriesQuery.data || []
   const primaryCard = (cardsQuery.data || [])[0]
 
-  const summaryCards = [
-    { label: 'Total Balance', value: totalBalance, icon: Wallet, tone: 'primary' },
-    { label: 'Available Balance', value: totalAvailable, icon: Wallet, tone: 'accent' },
-    { label: 'Monthly Income', value: monthlyIncome, icon: TrendingUp, tone: 'positive' },
-    { label: 'Monthly Spending', value: monthlySpending, icon: TrendingDown, tone: 'negative' },
-    { label: 'Savings', value: totalSavings, icon: PiggyBank, tone: 'warning' },
-  ] as const
+  const depositMutation = useMutation({
+    mutationFn: () => accountsApi.deposit(primaryAccount!.id, Number(depositAmount)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] })
+      toast({ title: 'Money added', description: `Successfully added ${formatCurrency(Number(depositAmount))}.`, variant: 'success' })
+      setOpenDepositModal(false)
+      setDepositAmount('')
+    },
+    onError: (err) => toast({ title: 'Could not add money', description: (err as Error).message, variant: 'error' }),
+  })
 
   const loadingSummary = accountsQuery.isLoading || overviewQuery.isLoading || savingsQuery.isLoading
 
@@ -66,34 +106,165 @@ export default function Dashboard() {
     <div>
       <PageHeader title="Home" description="Your financial snapshot at a glance" />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-        {loadingSummary
-          ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)
-          : summaryCards.map((c) => (
-              <Card key={c.label} className="min-w-0">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate text-xs font-medium text-[var(--color-text-muted)]">{c.label}</span>
-                    <span
-                      className={cn(
-                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
-                        c.tone === 'primary' && 'bg-[var(--color-primary)]/12 text-[var(--color-primary)]',
-                        c.tone === 'accent' && 'bg-[var(--color-accent)]/12 text-[var(--color-accent)]',
-                        c.tone === 'positive' && 'bg-[var(--color-positive)]/12 text-[var(--color-positive)]',
-                        c.tone === 'negative' && 'bg-[var(--color-negative)]/12 text-[var(--color-negative)]',
-                        c.tone === 'warning' && 'bg-[var(--color-warning)]/12 text-[var(--color-warning)]',
-                      )}
-                    >
-                      <c.icon size={16} />
-                    </span>
-                  </div>
-                  <p className="mt-3 truncate text-xl font-bold tracking-tight text-[var(--color-text)] sm:text-2xl">
-                    {formatCurrency(c.value)}
-                  </p>
-                </CardContent>
-              </Card>
+      {loadingSummary ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <Skeleton className="h-56 w-full lg:col-span-7 rounded-2xl" />
+          <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-2xl" />
             ))}
-      </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          {/* Main Total Balance Hero Card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 p-6 sm:p-7 text-white shadow-xl border border-indigo-500/20 lg:col-span-7 flex flex-col justify-between group">
+            {/* Ambient Background Blur Elements */}
+            <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none transition-all duration-700 group-hover:bg-indigo-500/30" />
+            <div className="absolute -left-10 -bottom-10 h-56 w-56 rounded-full bg-purple-500/20 blur-3xl pointer-events-none transition-all duration-700 group-hover:bg-purple-500/30" />
+
+            <div className="relative z-10 space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md border border-white/15 shadow-inner">
+                    <Wallet className="h-5 w-5 text-indigo-300" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider font-bold text-indigo-200/80">Total Net Balance</span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-300 border border-emerald-500/30">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Balance
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {primaryAccount && (
+                  <span className="hidden sm:inline-flex text-xs font-mono text-indigo-200/80 bg-white/10 px-3 py-1 rounded-lg border border-white/15 backdrop-blur-sm">
+                    A/C {maskAccountNumber(primaryAccount.account_number)}
+                  </span>
+                )}
+              </div>
+
+              <div className="py-1">
+                <div className="flex items-center gap-3">
+                  <p className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-md">
+                    {showBalance ? formatCurrency(totalBalance) : '₹ ••••••••'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={toggleShowBalance}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-indigo-200 hover:bg-white/20 hover:text-white transition-all backdrop-blur-md border border-white/15"
+                    title={showBalance ? 'Hide balance' : 'Show balance'}
+                  >
+                    {showBalance ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-medium text-indigo-200/80 flex items-center gap-1.5">
+                  <span>Available balance:</span>
+                  <strong className="text-white font-semibold">
+                    {showBalance ? formatCurrency(totalAvailable) : '••••••••'}
+                  </strong>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {primaryAccount && (
+                  <Button
+                    onClick={() => setOpenDepositModal(true)}
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-500/30 border-0 rounded-xl px-5 h-10 transition-all active:scale-95"
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" /> Add Money
+                  </Button>
+                )}
+                <Link to="/payments">
+                  <Button
+                    variant="outline"
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/30 backdrop-blur-md rounded-xl px-5 h-10 transition-all active:scale-95"
+                  >
+                    <Send className="mr-1.5 h-4 w-4" /> Send Money
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Stats 2x2 Grid */}
+          <div className="lg:col-span-5 grid grid-cols-2 gap-3 sm:gap-4">
+            {/* Monthly Income */}
+            <Card className="relative overflow-hidden border border-[var(--color-border)] transition-all hover:shadow-md hover:border-emerald-500/30">
+              <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)]">Monthly Income</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <TrendingUp size={16} />
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text)]">
+                    +{formatCurrency(monthlyIncome)}
+                  </p>
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">This month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Spending */}
+            <Card className="relative overflow-hidden border border-[var(--color-border)] transition-all hover:shadow-md hover:border-rose-500/30">
+              <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)]">Monthly Spending</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <TrendingDown size={16} />
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text)]">
+                    {formatCurrency(monthlySpending)}
+                  </p>
+                  <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400">This month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Savings Goals */}
+            <Card className="relative overflow-hidden border border-[var(--color-border)] transition-all hover:shadow-md hover:border-amber-500/30">
+              <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)]">Savings Vaults</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <PiggyBank size={16} />
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text)]">
+                    {formatCurrency(totalSavings)}
+                  </p>
+                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">{savingsGoals.length} goal{savingsGoals.length !== 1 ? 's' : ''}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Accounts Count */}
+            <Card className="relative overflow-hidden border border-[var(--color-border)] transition-all hover:shadow-md hover:border-indigo-500/30">
+              <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-[var(--color-text-muted)]">Accounts</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <Building2 size={16} />
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <p className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-text)]">
+                    {accounts.length} {accounts.length === 1 ? 'Active Account' : 'Active Accounts'}
+                  </p>
+                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">INR Currency</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -257,6 +428,55 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Quick Add Money Modal */}
+      <Dialog open={openDepositModal} onClose={() => setOpenDepositModal(false)} title="Add Money to Account">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (depositAmount && Number(depositAmount) > 0) {
+              depositMutation.mutate()
+            }
+          }}
+          className="space-y-4 pt-2"
+        >
+          <div>
+            <Label htmlFor="depositAmount">Amount (INR)</Label>
+            <Input
+              id="depositAmount"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="e.g. 5000"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            {[1000, 5000, 10000, 50000].map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => setDepositAmount(String(amt))}
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text)] transition-colors hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)]"
+              >
+                +₹{amt.toLocaleString('en-IN')}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => setOpenDepositModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1" loading={depositMutation.isPending} disabled={!depositAmount || Number(depositAmount) <= 0}>
+              Confirm Deposit
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   )
 }

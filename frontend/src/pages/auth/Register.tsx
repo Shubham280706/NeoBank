@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input, Label, FieldError } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/hooks/useToast'
-import { AlertTriangle, Mail } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 
 const schema = z
   .object({
@@ -33,12 +33,7 @@ type FormValues = z.infer<typeof schema>
 export default function Register() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const [step, setStep] = useState<'form' | 'otp'>('form')
-  const [pendingEmail, setPendingEmail] = useState('')
-  const [otp, setOtp] = useState('')
-  const [otpError, setOtpError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [resending, setResending] = useState(false)
 
   const {
     register,
@@ -46,15 +41,10 @@ export default function Register() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  // Creates the user immediately — Supabase sends a real "Confirm signup"
-  // email containing a 6-digit code (the project's email template must
-  // include {{ .Token }} for this to be an OTP rather than just a link).
-  // The account exists but has no verified session until the code below is
-  // confirmed via verifyOtp, so nothing is accessible yet.
   const onSubmitForm = async (values: FormValues) => {
     setSubmitting(true)
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -67,13 +57,21 @@ export default function Register() {
         },
       })
       if (error) throw error
-      setPendingEmail(values.email)
-      setStep('otp')
+
+      // Auto sign in if session wasn't created automatically
+      if (!data.session) {
+        await supabase.auth.signInWithPassword({
+          email: values.email,
+          password: values.password,
+        })
+      }
+
       toast({
-        title: 'Check your email',
-        description: `We sent a 6-digit verification code to ${values.email}.`,
-        variant: 'info',
+        title: 'Account created',
+        description: "Welcome to NeoBank — let's verify your identity next.",
+        variant: 'success',
       })
+      navigate('/kyc')
     } catch (err) {
       toast({
         title: 'Sign up failed',
@@ -83,85 +81,6 @@ export default function Register() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const completeSignup = async () => {
-    if (otp.length !== 6) return
-    setSubmitting(true)
-    setOtpError('')
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: pendingEmail,
-        token: otp,
-        type: 'signup',
-      })
-      if (error) throw error
-      toast({ title: 'Account verified', description: 'Welcome to NeoBank — let\'s verify your identity next.', variant: 'success' })
-      navigate('/kyc')
-    } catch (err) {
-      setOtpError(err instanceof Error ? err.message : 'Invalid or expired code')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const resendCode = async () => {
-    setResending(true)
-    try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email: pendingEmail })
-      if (error) throw error
-      toast({ title: 'Code resent', description: `Check ${pendingEmail} again.`, variant: 'info' })
-    } catch (err) {
-      toast({ title: 'Could not resend code', description: err instanceof Error ? err.message : 'Try again shortly', variant: 'error' })
-    } finally {
-      setResending(false)
-    }
-  }
-
-  if (step === 'otp') {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Verify your email</CardTitle>
-          <CardDescription>Enter the 6-digit code we sent to {pendingEmail}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex items-start gap-2 rounded-lg bg-[var(--color-accent)]/10 p-3 text-xs text-[var(--color-accent)]">
-            <Mail size={16} className="mt-0.5 shrink-0" />
-            <span>A real verification email was sent via Supabase. Check spam if it doesn't arrive within a minute.</span>
-          </div>
-          <Label htmlFor="otp">6-digit code</Label>
-          <Input
-            id="otp"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="000000"
-            value={otp}
-            onChange={(e) => {
-              setOtp(e.target.value.replace(/\D/g, ''))
-              setOtpError('')
-            }}
-          />
-          <FieldError>{otpError}</FieldError>
-          <div className="mt-4 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setStep('form')}>
-              Back
-            </Button>
-            <Button className="flex-1" loading={submitting} onClick={completeSignup} disabled={otp.length !== 6}>
-              Verify &amp; create account
-            </Button>
-          </div>
-          <button
-            type="button"
-            onClick={resendCode}
-            disabled={resending}
-            className="mt-3 w-full text-center text-xs font-medium text-[var(--color-primary)] hover:underline disabled:opacity-50"
-          >
-            {resending ? 'Resending…' : "Didn't get a code? Resend"}
-          </button>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
