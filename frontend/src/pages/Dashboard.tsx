@@ -43,12 +43,12 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const [openDepositModal, setOpenDepositModal] = useState(false)
   const [depositAmount, setDepositAmount] = useState('')
-  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('hide_balance') !== 'true')
+  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('show_balance') === 'true')
 
   const toggleShowBalance = () => {
     setShowBalance((prev) => {
       const next = !prev
-      localStorage.setItem('hide_balance', String(!next))
+      localStorage.setItem('show_balance', String(next))
       return next
     })
   }
