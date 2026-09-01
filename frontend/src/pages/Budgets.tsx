@@ -113,38 +113,52 @@ export default function Budgets() {
             const warn = pct >= 70
             return (
               <Card key={b.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-[var(--color-text)]">{b.category}</p>
-                      <p className="text-xs capitalize text-[var(--color-text-muted)]">{b.period || 'monthly'}</p>
+                <CardContent className="p-4 flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-[var(--color-text)]">{b.category}</p>
+                        <p className="text-xs capitalize text-[var(--color-text-muted)]">{b.period || 'monthly'} limit</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(b)} aria-label="Edit">
+                          <Pencil size={14} />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleting(b)} aria-label="Delete">
+                          <Trash2 size={14} className="text-[var(--color-negative)]" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(b)} aria-label="Edit">
-                        <Pencil size={14} />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleting(b)} aria-label="Delete">
-                        <Trash2 size={14} className="text-[var(--color-negative)]" />
-                      </Button>
+                    <div className="mt-4">
+                      <div className="mb-1 flex justify-between text-xs text-[var(--color-text-muted)] font-medium">
+                        <span>{formatCurrency(b.spent || 0)} spent</span>
+                        <span className="font-semibold text-[var(--color-text)]">{formatCurrency(b.amount)} limit</span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-500',
+                            danger ? 'bg-[var(--color-negative)]' : warn ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-positive)]',
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className={cn('mt-1.5 text-xs font-semibold', danger ? 'text-[var(--color-negative)]' : warn ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-muted)]')}>
+                        {Math.round(pct)}% used {danger && '— limit reached!'}
+                      </p>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="mb-1 flex justify-between text-xs text-[var(--color-text-muted)]">
-                      <span>{formatCurrency(b.spent || 0)} spent</span>
-                      <span>{formatCurrency(b.amount)} limit</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--color-surface-2)]">
-                      <div
-                        className={cn(
-                          'h-full rounded-full',
-                          danger ? 'bg-[var(--color-negative)]' : warn ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-positive)]',
-                        )}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className={cn('mt-1 text-xs font-medium', danger ? 'text-[var(--color-negative)]' : warn ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-muted)]')}>
-                      {Math.round(pct)}% used {danger && '— over budget'}
-                    </p>
+
+                  <div className="mt-4 pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
+                    <span className="text-[11px] text-[var(--color-text-muted)] font-medium">Spending limit</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(b)}
+                      className="h-8 text-xs font-semibold rounded-lg"
+                    >
+                      <Pencil size={12} className="mr-1" /> Adjust Limit
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
