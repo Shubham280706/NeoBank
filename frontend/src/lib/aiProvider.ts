@@ -31,15 +31,19 @@ async function askGemini(messages: AIMessage[], apiKey: string): Promise<string>
   const systemMsg = messages.find((m) => m.role === 'system')?.content || ''
   const chatMsgs = messages.filter((m) => m.role !== 'system')
 
-  const contents = [
-    ...(systemMsg ? [{ role: 'user', parts: [{ text: `[SYSTEM CONTEXT]:\n${systemMsg}` }] }] : []),
-    ...chatMsgs.map((m) => ({
+  // Gemini requires alternating roles (user -> model -> user -> model)
+  const contents = chatMsgs.map((m, idx) => {
+    let text = m.content
+    if (idx === 0 && systemMsg) {
+      text = `Context:\n${systemMsg}\n\nQuestion:\n${m.content}`
+    }
+    return {
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-  ]
+      parts: [{ text }],
+    }
+  })
 
-  const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash']
   let lastErr = ''
 
   for (const model of modelsToTry) {
@@ -49,7 +53,16 @@ async function askGemini(messages: AIMessage[], apiKey: string): Promise<string>
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents }),
+          body: JSON.stringify({
+            contents,
+            ...(systemMsg
+              ? {
+                  systemInstruction: {
+                    parts: [{ text: systemMsg }],
+                  },
+                }
+              : {}),
+          }),
         },
       )
 
@@ -57,12 +70,14 @@ async function askGemini(messages: AIMessage[], apiKey: string): Promise<string>
         const data = await res.json()
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (text) return text
-      } else {
-        const errorData = await res.json().catch(() => ({}))
-        lastErr = errorData?.error?.message || res.statusText
-        if (res.status === 400 && lastErr.includes('API_KEY_INVALID')) {
-          throw new Error('Invalid Gemini API Key. Please get a free key from aistudio.google.com')
-        }
+      }
+
+      const errorData = await res.json().catch(() => ({}))
+      const msg = errorData?.error?.message || res.statusText || 'Gemini API call failed.'
+      lastErr = msg
+
+      if (res.status === 400 && (msg.includes('API_KEY_INVALID') || msg.includes('API key not valid'))) {
+        throw new Error('Invalid Gemini API Key. Please get a free key from aistudio.google.com')
       }
     } catch (err: any) {
       if (err.message.includes('Invalid Gemini API Key')) throw err
