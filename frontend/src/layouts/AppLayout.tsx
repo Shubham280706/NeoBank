@@ -6,10 +6,14 @@ import { TopBar } from '@/components/layout/TopBar'
 import { DemoBanner } from '@/components/layout/DemoBanner'
 import { MobileSidebar } from '@/components/layout/MobileSidebar'
 import { KycGate } from '@/layouts/KycGate'
+import { useMoneyReceivedListener } from '@/hooks/useMoneyReceivedListener'
 
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Listen for real-time incoming money transfers & notifications globally
+  useMoneyReceivedListener()
 
   return (
     <div className="flex min-h-screen bg-[var(--color-bg)]">
