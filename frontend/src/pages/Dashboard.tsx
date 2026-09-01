@@ -10,8 +10,6 @@ import {
   ArrowDownRight,
   Plus,
   Send,
-  CreditCard,
-  ShieldCheck,
   Building2,
   Eye,
   EyeOff,
@@ -23,7 +21,6 @@ import {
   budgetsApi,
   savingsApi,
   cardsApi,
-  type BankAccount,
 } from '@/lib/api'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
