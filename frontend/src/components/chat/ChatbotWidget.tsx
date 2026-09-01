@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { accountsApi, budgetsApi, transactionsApi } from '@/lib/api'
-import { askGroq, type GroqMessage } from '@/lib/groq'
+import { askAI, type AIProvider, type AIMessage } from '@/lib/aiProvider'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -15,21 +15,31 @@ import {
   ChevronDown,
   User,
   CheckCircle2,
+  ExternalLink,
 } from 'lucide-react'
 
 export function ChatbotWidget() {
   const { profile } = useAuth()
   const [open, setOpen] = useState(false)
   const [showKeyModal, setShowKeyModal] = useState(false)
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('groq_api_key') || '')
+
+  const [provider, setProvider] = useState<AIProvider>(() => {
+    return (localStorage.getItem('ai_provider') as AIProvider) || 'groq'
+  })
+
+  const [groqKey, setGroqKey] = useState(() => localStorage.getItem('groq_api_key') || '')
+  const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('gemini_api_key') || '')
+  const [openrouterKey, setOpenrouterKey] = useState(() => localStorage.getItem('openrouter_api_key') || '')
+
   const [tempKey, setTempKey] = useState('')
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
   const [messages, setMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; content: string }>>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello ${profile?.first_name || 'there'}! 👋 I'm **NeoBot**, your AI Financial Assistant powered by **Groq** ⚡.\n\nAsk me anything about your balance, recent transactions, budgets, or financial advice!`,
+      content: `Hello ${profile?.first_name || 'there'}! 👋 I'm **NeoBot**, your AI Financial Assistant.\n\nI can analyze your balance, spending, budgets, and answer financial questions using **Groq**, **Google Gemini**, or **OpenRouter**!`,
     },
   ])
 
@@ -51,9 +61,27 @@ export function ChatbotWidget() {
     }
   }, [messages, open])
 
-  const saveKey = () => {
-    localStorage.setItem('groq_api_key', tempKey.trim())
-    setApiKey(tempKey.trim())
+  const getActiveKey = (p = provider): string => {
+    if (p === 'gemini') return geminiKey || (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) || ''
+    if (p === 'openrouter') return openrouterKey || (import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined) || ''
+    return groqKey || (import.meta.env.VITE_GROQ_API_KEY as string | undefined) || ''
+  }
+
+  const saveKeySettings = (newProvider: AIProvider, newKey: string) => {
+    setProvider(newProvider)
+    localStorage.setItem('ai_provider', newProvider)
+
+    if (newProvider === 'gemini') {
+      localStorage.setItem('gemini_api_key', newKey.trim())
+      setGeminiKey(newKey.trim())
+    } else if (newProvider === 'openrouter') {
+      localStorage.setItem('openrouter_api_key', newKey.trim())
+      setOpenrouterKey(newKey.trim())
+    } else {
+      localStorage.setItem('groq_api_key', newKey.trim())
+      setGroqKey(newKey.trim())
+    }
+
     setShowKeyModal(false)
   }
 
@@ -86,8 +114,8 @@ You have access to the user's real-time financial snapshot:
 ${JSON.stringify(contextData, null, 2)}
 
 Instructions:
-1. Answer the user's questions about their balance, spending, budgets, transactions, or banking advice clearly and accurately.
-2. Format monetary amounts in INR (₹) or formatted currency.
+1. Answer questions about account balances, spending, budgets, transactions, or banking advice clearly and accurately.
+2. Format monetary amounts in INR (₹).
 3. Keep responses friendly, concise, professional, and well-formatted using markdown bullet points and bolding.
 4. Never reveal confidential security tokens or internal database IDs.`
   }
@@ -96,8 +124,9 @@ Instructions:
     const userText = (textToSend || inputMessage).trim()
     if (!userText || isLoading) return
 
-    const keyToUse = apiKey || (import.meta.env.VITE_GROQ_API_KEY as string | undefined)
-    if (!keyToUse) {
+    const activeKey = getActiveKey()
+    if (!activeKey) {
+      setTempKey('')
       setShowKeyModal(true)
       return
     }
@@ -109,12 +138,12 @@ Instructions:
     setIsLoading(true)
 
     try {
-      const groqMessages: GroqMessage[] = [
+      const aiMessages: AIMessage[] = [
         { role: 'system', content: buildSystemPrompt() },
         ...updatedMessages.map((m) => ({ role: m.role, content: m.content })),
       ]
 
-      const aiReply = await askGroq(groqMessages, keyToUse)
+      const aiReply = await askAI(aiMessages, provider, activeKey)
       setMessages((prev) => [
         ...prev,
         { id: `ai-${Date.now()}`, role: 'assistant', content: aiReply },
@@ -125,7 +154,7 @@ Instructions:
         {
           id: `err-${Date.now()}`,
           role: 'assistant',
-          content: `⚠️ **Error**: ${err.message || 'Could not communicate with Groq.'}\n\nPlease check your Groq API Key by clicking the key icon at the top.`,
+          content: `⚠️ **Error**: ${err.message || 'Failed to communicate with AI provider.'}\n\nPlease click the 🔑 key icon at top right to check your API key.`,
         },
       ])
     } finally {
@@ -139,6 +168,27 @@ Instructions:
     '🎬 Check Entertainment budget',
     '💡 Savings advice',
   ]
+
+  const providerLabels: Record<AIProvider, { name: string; badge: string; link: string; placeholder: string }> = {
+    groq: {
+      name: 'Groq Cloud',
+      badge: 'Groq ⚡',
+      link: 'https://console.groq.com/keys',
+      placeholder: 'gsk_...',
+    },
+    gemini: {
+      name: 'Google Gemini',
+      badge: 'Gemini ♊',
+      link: 'https://aistudio.google.com/app/apikey',
+      placeholder: 'AIzaSy...',
+    },
+    openrouter: {
+      name: 'OpenRouter',
+      badge: 'OpenRouter 🔀',
+      link: 'https://openrouter.ai/keys',
+      placeholder: 'sk-or-v1-...',
+    },
+  }
 
   return (
     <>
@@ -160,7 +210,7 @@ Instructions:
 
       {/* Floating Chat Modal */}
       {open && (
-        <div className="fixed bottom-24 right-4 z-50 flex h-[520px] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl backdrop-blur-2xl transition-all md:bottom-24 md:right-6">
+        <div className="fixed bottom-24 right-4 z-50 flex h-[530px] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl backdrop-blur-2xl transition-all md:bottom-24 md:right-6">
           {/* Top Bar */}
           <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-4 text-white">
             <div className="flex items-center gap-3">
@@ -170,8 +220,8 @@ Instructions:
               <div>
                 <div className="flex items-center gap-1.5">
                   <h3 className="font-bold text-white text-sm">NeoBot AI</h3>
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 border border-emerald-500/30">
-                    Groq ⚡
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold text-emerald-300 border border-emerald-500/30">
+                    {providerLabels[provider].badge}
                   </span>
                 </div>
                 <p className="text-[11px] text-indigo-200/80">Your Smart Banking Companion</p>
@@ -182,11 +232,11 @@ Instructions:
               <button
                 type="button"
                 onClick={() => {
-                  setTempKey(apiKey)
+                  setTempKey(getActiveKey())
                   setShowKeyModal(true)
                 }}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-indigo-200 hover:bg-white/20 hover:text-white transition-all"
-                title="Configure Groq API Key"
+                title="Configure AI Provider & Keys"
               >
                 <Key size={16} />
               </button>
@@ -202,36 +252,66 @@ Instructions:
 
           {/* Key Configuration Banner Modal */}
           {showKeyModal ? (
-            <div className="flex-1 p-5 flex flex-col justify-center space-y-4 bg-[var(--color-surface)]">
-              <div className="text-center space-y-1">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600">
-                  <Key size={24} />
+            <div className="flex-1 p-5 flex flex-col justify-between overflow-y-auto bg-[var(--color-surface)] space-y-4">
+              <div className="space-y-3">
+                <div className="text-center space-y-1">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600">
+                    <Key size={20} />
+                  </div>
+                  <h4 className="font-bold text-[var(--color-text)] text-sm">Select AI Model & API Key</h4>
+                  <p className="text-xs text-[var(--color-text-muted)]">Choose your provider and enter your free API key</p>
                 </div>
-                <h4 className="font-bold text-[var(--color-text)] text-base">Groq API Key Settings</h4>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Enter your Groq API Key below. It will be saved securely in your browser.
-                </p>
+
+                {/* Provider Selector Tabs */}
+                <div className="grid grid-cols-3 gap-1 rounded-xl bg-[var(--color-surface-2)] p-1 text-xs">
+                  {(['groq', 'gemini', 'openrouter'] as AIProvider[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        setProvider(p)
+                        setTempKey(getActiveKey(p))
+                      }}
+                      className={`rounded-lg py-1.5 font-medium transition-all text-center ${
+                        provider === p
+                          ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                      }`}
+                    >
+                      {p === 'groq' ? '⚡ Groq' : p === 'gemini' ? '♊ Gemini' : '🔀 OpenRouter'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-semibold text-[var(--color-text)]">
+                    {providerLabels[provider].name} API Key
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder={providerLabels[provider].placeholder}
+                    value={tempKey}
+                    onChange={(e) => setTempKey(e.target.value)}
+                    className="font-mono text-xs"
+                  />
+                  <a
+                    href={providerLabels[provider].link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] hover:underline pt-0.5"
+                  >
+                    <span>Get free {providerLabels[provider].name} API Key</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
 
-              <div>
-                <Input
-                  type="password"
-                  placeholder="gsk_..."
-                  value={tempKey}
-                  onChange={(e) => setTempKey(e.target.value)}
-                  className="font-mono text-xs"
-                />
-                <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-                  Get your free API key at <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-[var(--color-primary)] underline">console.groq.com</a>
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setShowKeyModal(false)}>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1 text-xs" onClick={() => setShowKeyModal(false)}>
                   Cancel
                 </Button>
-                <Button className="flex-1 bg-indigo-600 text-white" onClick={saveKey}>
-                  <CheckCircle2 size={14} className="mr-1" /> Save Key
+                <Button className="flex-1 text-xs bg-indigo-600 text-white hover:bg-indigo-700" onClick={() => saveKeySettings(provider, tempKey)}>
+                  <CheckCircle2 size={14} className="mr-1" /> Save & Activate
                 </Button>
               </div>
             </div>
@@ -269,7 +349,7 @@ Instructions:
                 {isLoading && (
                   <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                     <Loader2 size={16} className="animate-spin text-indigo-500" />
-                    <span>NeoBot is analyzing your finances...</span>
+                    <span>NeoBot ({providerLabels[provider].name}) is analyzing your finances...</span>
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -298,7 +378,7 @@ Instructions:
                 className="flex items-center gap-2 p-3 border-t border-[var(--color-border)] bg-[var(--color-surface)]"
               >
                 <Input
-                  placeholder="Ask NeoBot..."
+                  placeholder={`Ask NeoBot (${providerLabels[provider].name})...`}
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   className="flex-1 text-xs"
