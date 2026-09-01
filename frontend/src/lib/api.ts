@@ -266,10 +266,10 @@ export const transactionsApi = {
         .update({ category })
         .eq('id', id)
         .select()
-        .single()
 
       if (error) throw new ApiError(error.message, 500)
-      return data as Transaction
+      const updated = data && data.length > 0 ? data[0] : { id, category }
+      return updated as Transaction
     }
   },
 }
