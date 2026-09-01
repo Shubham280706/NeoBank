@@ -346,10 +346,93 @@ export const fxApi = {
 
 // ---------- budgets ----------
 export const budgetsApi = {
-  list: () => get<Budget[]>('/api/budgets'),
-  create: (body: Partial<Budget>) => post<Budget>('/api/budgets', body),
-  update: (id: string, body: Partial<Budget>) => put<Budget>(`/api/budgets/${id}`, body),
-  remove: (id: string) => del<void>(`/api/budgets/${id}`),
+  list: async () => {
+    try {
+      return await get<Budget[]>('/api/budgets')
+    } catch {
+      const { data: rawBudgets, error: bErr } = await supabase
+        .from('budgets')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (bErr) throw new ApiError(bErr.message, 500)
+      const budgets = rawBudgets || []
+
+      // Fetch DEBIT transactions to sum up spent per category
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('category, amount, type')
+        .eq('type', 'DEBIT')
+
+      const categorySpent: Record<string, number> = {}
+      ;(txs || []).forEach((t: any) => {
+        const cat = String(t.category || 'General').trim()
+        if (cat) {
+          categorySpent[cat] = (categorySpent[cat] || 0) + Number(t.amount || 0)
+          categorySpent[cat.toLowerCase()] = (categorySpent[cat.toLowerCase()] || 0) + Number(t.amount || 0)
+        }
+      })
+
+      return budgets.map((b: any) => {
+        const cat = String(b.category || '').trim()
+        const spent = categorySpent[cat] ?? categorySpent[cat.toLowerCase()] ?? 0
+        const amount = Number(b.amount || 0)
+        const remaining = amount - spent
+        const percentUsed = amount > 0 ? (spent / amount) * 100 : 0
+        return {
+          ...b,
+          spent,
+          remaining,
+          percentUsed,
+        }
+      }) as Budget[]
+    }
+  },
+  create: async (body: Partial<Budget>) => {
+    try {
+      return await post<Budget>('/api/budgets', body)
+    } catch {
+      const { data: user } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from('budgets')
+        .insert({
+          user_id: user.user?.id,
+          category: body.category,
+          amount: body.amount,
+          period: body.period || 'monthly',
+        })
+        .select()
+
+      if (error) throw new ApiError(error.message, 500)
+      return ((data && data[0]) || data) as Budget
+    }
+  },
+  update: async (id: string, body: Partial<Budget>) => {
+    try {
+      return await put<Budget>(`/api/budgets/${id}`, body)
+    } catch {
+      const { data, error } = await supabase
+        .from('budgets')
+        .update({
+          ...(body.category ? { category: body.category } : {}),
+          ...(body.amount !== undefined ? { amount: body.amount } : {}),
+          ...(body.period ? { period: body.period } : {}),
+        })
+        .eq('id', id)
+        .select()
+
+      if (error) throw new ApiError(error.message, 500)
+      return ((data && data[0]) || data) as Budget
+    }
+  },
+  remove: async (id: string) => {
+    try {
+      await del<void>(`/api/budgets/${id}`)
+    } catch {
+      const { error } = await supabase.from('budgets').delete().eq('id', id)
+      if (error) throw new ApiError(error.message, 500)
+    }
+  },
 }
 
 // ---------- savings ----------
